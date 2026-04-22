@@ -1,0 +1,21 @@
+{
+  "f1_cv": 0.9976905311778291,
+  "auc_roc_cv": 0.9999952950918398,
+  "avg_precision_cv": 0.9999786653012461,
+  "best_threshold": 0.2,
+  "n_samples": 1200,
+  "n_at_risk": 216,
+  "feature_names": [
+    "attendance_pct",
+    "internal_marks",
+    "assignment_submission_rate",
+    "prev_semester_cgpa",
+    "lab_attendance_pct",
+    "quiz_avg_score",
+    "library_visits_per_month",
+    "extracurricular_participation",
+    "active_backlogs",
+    "dept_enc",
+    "semester"
+  ]
+}

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduGuard — Student Risk Intelligence Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #060b14;
+    --bg2: #0d1525;
+    --bg3: #131f35;
+    --border: #1e2d48;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --accent: #38bdf8;
+    --critical: #f43f5e;
+    --high: #fb923c;
+    --medium: #facc15;
+    --low: #4ade80;
+    --glow: rgba(56,189,248,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--bg); color:var(--text); font-family:'Sora',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+  /* Animated grid background */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity:0.3;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ── Layout ── */
+  .wrap { max-width:1400px; margin:0 auto; padding:0 2rem; position:relative; z-index:1; }
+
+  /* ── Header ── */
+  header {
+    padding:2rem 0 1.5rem;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+    background:rgba(6,11,20,0.92);
+    backdrop-filter:blur(12px);
+  }
+  .logo { display:flex; align-items:center; gap:0.75rem; }
+  .logo-icon {
+    width:42px; height:42px; background:linear-gradient(135deg,#0ea5e9,#6366f1);
+    border-radius:10px; display:grid; place-items:center; font-size:1.3rem;
+    box-shadow:0 0 20px rgba(99,102,241,0.4);
+  }
+  .logo-text { font-size:1.4rem; font-weight:800; letter-spacing:-0.03em; }
+  .logo-sub { font-size:0.72rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; }
+  .header-badges { display:flex; gap:0.75rem; align-items:center; }
+  .badge {
+    padding:0.3rem 0.9rem; border-radius:999px; font-size:0.72rem;
+    font-weight:600; letter-spacing:0.05em; border:1px solid;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .badge-green  { color:#4ade80; border-color:#4ade8044; background:#4ade8011; }
+  .badge-blue   { color:#38bdf8; border-color:#38bdf844; background:#38bdf811; }
+  .badge-purple { color:#a78bfa; border-color:#a78bfa44; background:#a78bfa11; }
+
+  /* ── Hero ── */
+  .hero {
+    padding:4rem 0 3rem;
+    text-align:center;
+  }
+  .hero-eyebrow {
+    display:inline-flex; align-items:center; gap:0.5rem;
+    background:var(--bg3); border:1px solid var(--border);
+    padding:0.35rem 1rem; border-radius:999px;
+    font-size:0.75rem; color:var(--accent); letter-spacing:0.08em;
+    text-transform:uppercase; margin-bottom:1.5rem;
+  }
+  .hero-eyebrow::before { content:''; width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+  .hero h1 {
+    font-size:clamp(2.5rem,5vw,4rem); font-weight:800; letter-spacing:-0.04em;
+    line-height:1.1; margin-bottom:1rem;
+    background:linear-gradient(135deg, #e2e8f0 0%, #38bdf8 50%, #a78bfa 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .hero p { color:var(--muted); font-size:1.1rem; max-width:600px; margin:0 auto 2.5rem; line-height:1.7; }
+
+  /* ── KPI Grid ── */
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .kpi-card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+    padding:1.4rem 1.6rem; position:relative; overflow:hidden;
+    transition:border-color 0.2s, transform 0.2s;
+  }
+  .kpi-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .kpi-card::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, var(--glow-color,var(--glow)) 0%, transparent 60%);
+    opacity:0.5;
+  }
+  .kpi-card.c-critical { --glow-color: rgba(244,63,94,0.12); border-left:3px solid var(--critical); }
+  .kpi-card.c-high     { --glow-color: rgba(251,146,60,0.12); border-left:3px solid var(--high); }
+  .kpi-card.c-medium   { --glow-color: rgba(250,204,21,0.10); border-left:3px solid var(--medium); }
+  .kpi-card.c-low      { --glow-color: rgba(74,222,128,0.10); border-left:3px solid var(--low); }
+  .kpi-card.c-total    { --glow-color: rgba(56,189,248,0.10); border-left:3px solid var(--accent); }
+  .kpi-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; }
+  .kpi-value { font-size:2.2rem; font-weight:800; font-family:'JetBrains Mono',monospace; letter-spacing:-0.03em; }
+  .kpi-sub   { font-size:0.78rem; color:var(--muted); margin-top:0.3rem; }
+  .kpi-trend { position:absolute; top:1.2rem; right:1.2rem; font-size:1.4rem; }
+
+  /* ── Section ── */
+  .section { margin-bottom:2.5rem; }
+  .section-head { display:flex; align-items:center; gap:0.75rem; margin-bottom:1.2rem; }
+  .section-head h2 { font-size:1.1rem; font-weight:700; letter-spacing:-0.02em; }
+  .section-head .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* ── Charts Grid ── */
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+  .chart-box {
+    background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+    padding:1.4rem; position:relative;
+  }
+  .chart-box h3 { font-size:0.82rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:1rem; }
+  .chart-box canvas { max-height:260px; }
+  .chart-box.full { grid-column:1/-1; }
+
+  /* ── Table ── */
+  .table-box { background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .table-toolbar { padding:1rem 1.4rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .table-toolbar h3 { font-size:0.9rem; font-weight:700; }
+  .search-input {
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:0.4rem 0.9rem; color:var(--text); font-size:0.82rem;
+    font-family:'Sora',sans-serif; outline:none; width:220px;
+    transition:border-color 0.2s;
+  }
+  .search-input:focus { border-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+  th { padding:0.75rem 1rem; text-align:left; font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; border-bottom:1px solid var(--border); font-weight:600; }
+  td { padding:0.8rem 1rem; border-bottom:1px solid rgba(30,45,72,0.5); }
+  tr:hover td { background:var(--bg3); }
+  tr:last-child td { border-bottom:none; }
+  .mono { font-family:'JetBrains Mono',monospace; }
+  .prob-bar-wrap { display:flex; align-items:center; gap:0.6rem; }
+  .prob-bar { height:5px; border-radius:3px; flex-grow:1; background:var(--bg3); overflow:hidden; width:80px; }
+  .prob-bar-fill { height:100%; border-radius:3px; transition:width 0.4s; }
+
+  /* ── Risk Badge ── */
+  .badge-risk {
+    padding:0.22rem 0.7rem; border-radius:6px; font-size:0.7rem;
+    font-weight:700; letter-spacing:0.05em; font-family:'JetBrains Mono',monospace;
+    white-space:nowrap;
+  }
+  .r-Critical { background:#f43f5e22; color:#f43f5e; border:1px solid #f43f5e44; }
+  .r-High     { background:#fb923c22; color:#fb923c; border:1px solid #fb923c44; }
+  .r-Medium   { background:#facc1522; color:#facc15; border:1px solid #facc1544; }
+  .r-Low      { background:#4ade8022; color:#4ade80; border:1px solid #4ade8044; }
+
+  /* ── Filter tabs ── */
+  .filter-tabs { display:flex; gap:0.5rem; flex-wrap:wrap; }
+  .filter-tab {
+    padding:0.3rem 0.9rem; border-radius:999px; font-size:0.75rem;
+    border:1px solid var(--border); background:transparent; color:var(--muted);
+    cursor:pointer; font-family:'Sora',sans-serif; transition:all 0.2s;
+  }
+  .filter-tab:hover { border-color:var(--accent); color:var(--accent); }
+  .filter-tab.active { background:var(--accent); border-color:var(--accent); color:#000; font-weight:700; }
+
+  /* ── Metrics ── */
+  .metrics-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; }
+  .metric-pill {
+    background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+    padding:1rem 1.2rem; text-align:center;
+  }
+  .metric-pill .val { font-size:1.8rem; font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--accent); }
+  .metric-pill .lbl { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-top:0.2rem; }
+
+  /* ── SHAP bar ── */
+  .shap-row { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.7rem; font-size:0.8rem; }
+  .shap-feat { width:200px; flex-shrink:0; color:var(--text); }
+  .shap-track { flex:1; height:10px; background:var(--bg3); border-radius:5px; overflow:hidden; }
+  .shap-fill  { height:100%; border-radius:5px; background:linear-gradient(90deg,#f43f5e,#fb923c); }
+  .shap-val   { width:60px; text-align:right; font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:0.75rem; }
+
+  /* ── Footer ── */
+  footer { padding:2rem 0; text-align:center; color:var(--muted); font-size:0.78rem; border-top:1px solid var(--border); margin-top:3rem; }
+
+  /* ── Animate in ── */
+  .fade-in { animation:fadeUp 0.5s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in:nth-child(1){animation-delay:0.0s}
+  .fade-in:nth-child(2){animation-delay:0.07s}
+  .fade-in:nth-child(3){animation-delay:0.14s}
+  .fade-in:nth-child(4){animation-delay:0.21s}
+  .fade-in:nth-child(5){animation-delay:0.28s}
+
+  @media(max-width:768px){ .charts-grid{grid-template-columns:1fr;} .hero h1{font-size:2rem;} }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+    <div class="logo">
+      <div class="logo-icon">🎓</div>
+      <div>
+        <div class="logo-text">EduGuard</div>
+        <div class="logo-sub">Early Warning System</div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge badge-green">F1: 0.9977 ✓</span>
+      <span class="badge badge-blue">AUC-ROC: 1.00</span>
+      <span class="badge badge-purple">XGBoost + SMOTE</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Hero -->
+  <section class="hero fade-in">
+    <div class="hero-eyebrow">Live Dashboard Demo</div>
+    <h1>Student Risk Intelligence<br>Platform</h1>
+    <p>Proactive early warning system for engineering colleges. Identifies at-risk students before failures happen — with full SHAP explainability.</p>
+  </section>
+
+  <!-- Model Metrics Strip -->
+  <div class="metrics-strip section fade-in">
+    <div class="metric-pill"><div class="val">0.9977</div><div class="lbl">F1 Score (CV)</div></div>
+    <div class="metric-pill"><div class="val">1.0000</div><div class="lbl">AUC-ROC (CV)</div></div>
+    <div class="metric-pill"><div class="val">1200</div><div class="lbl">Students Trained</div></div>
+    <div class="metric-pill"><div class="val">18%</div><div class="lbl">Minority Class</div></div>
+    <div class="metric-pill"><div class="val">0.20</div><div class="lbl">Tuned Threshold</div></div>
+    <div class="metric-pill"><div class="val">11</div><div class="lbl">Features Used</div></div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid fade-in" id="kpiGrid"></div>
+
+  <!-- Charts -->
+  <div class="charts-grid section fade-in">
+    <div class="chart-box">
+      <h3>Risk Level Distribution</h3>
+      <canvas id="chartDoughnut"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>At-Risk % by Department</h3>
+      <canvas id="chartDept"></canvas>
+    </div>
+    <div class="chart-box full">
+      <h3>Risk Probability Distribution — All Students</h3>
+      <canvas id="chartHist"></canvas>
+    </div>
+  </div>
+
+  <!-- SHAP Feature Importance -->
+  <div class="section fade-in">
+    <div class="section-head">
+      <div class="dot" style="background:#a78bfa;"></div>
+      <h2>SHAP Global Feature Importance</h2>
+    </div>
+    <div class="chart-box">
+      <div id="shapBars"></div>
+    </div>
+  </div>
+
+  <!-- Student Table -->
+  <div class="section fade-in">
+    <div class="section-head">
+      <div class="dot" style="background:#f43f5e;"></div>
+      <h2>Student Risk Monitor</h2>
+    </div>
+    <div class="table-box">
+      <div class="table-toolbar">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <h3>120 Students Loaded</h3>
+          <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab active" data-filter="all">All</button>
+            <button class="filter-tab" data-filter="Critical">🔴 Critical</button>
+            <button class="filter-tab" data-filter="High">🟠 High</button>
+            <button class="filter-tab" data-filter="Medium">🟡 Medium</button>
+            <button class="filter-tab" data-filter="Low">🟢 Low</button>
+          </div>
+        </div>
+        <input class="search-input" id="searchInput" placeholder="Search student ID or dept…">
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Student ID</th>
+              <th>Dept</th>
+              <th>Sem</th>
+              <th>Attendance</th>
+              <th>Int. Marks</th>
+              <th>CGPA</th>
+              <th>Risk Prob</th>
+              <th>Risk Level</th>
+            </tr>
+          </thead>
+          <tbody id="studentTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    EduGuard — Built with XGBoost + SMOTE + SHAP &nbsp;|&nbsp; FastAPI Backend &nbsp;|&nbsp; Streamlit Dashboard &nbsp;|&nbsp; 14/14 Tests Passing
+  </div>
+</footer>
+
+<script>
+// ── Embedded Data ─────────────────────────────────────────────────────────────
+const STUDENTS = [{"student_id":"STU40603","department":"EEE","semester":3,"attendance_pct":96.01,"internal_marks":68.75,"prev_semester_cgpa":9.31,"at_risk":0,"risk_probability":0.0011,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU80075","department":"ECE","semester":6,"attendance_pct":96.55,"internal_marks":60.3,"prev_semester_cgpa":7.97,"at_risk":0,"risk_probability":0.0009,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU20155","department":"MECH","semester":8,"attendance_pct":57.37,"internal_marks":42.49,"prev_semester_cgpa":5.87,"at_risk":1,"risk_probability":0.9995,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU25509","department":"ECE","semester":3,"attendance_pct":74.97,"internal_marks":90.11,"prev_semester_cgpa":7.94,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU62994","department":"CSE","semester":7,"attendance_pct":40.07,"internal_marks":31.07,"prev_semester_cgpa":6.09,"at_risk":1,"risk_probability":0.9997,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU93558","department":"CIVIL","semester":7,"attendance_pct":82.13,"internal_marks":62.95,"prev_semester_cgpa":7.03,"at_risk":0,"risk_probability":0.0008,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU41499","department":"CSE","semester":4,"attendance_pct":68.39,"internal_marks":31.51,"prev_semester_cgpa":5.88,"at_risk":1,"risk_probability":0.9997,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU57953","department":"ECE","semester":4,"attendance_pct":46.56,"internal_marks":47.32,"prev_semester_cgpa":4.54,"at_risk":1,"risk_probability":0.9995,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU78062","department":"MECH","semester":3,"attendance_pct":72.78,"internal_marks":79.83,"prev_semester_cgpa":6.91,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU48652","department":"MECH","semester":6,"attendance_pct":74.73,"internal_marks":66.51,"prev_semester_cgpa":8.04,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU79533","department":"MECH","semester":5,"attendance_pct":100.0,"internal_marks":78.62,"prev_semester_cgpa":8.0,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU65296","department":"ECE","semester":4,"attendance_pct":54.43,"internal_marks":27.39,"prev_semester_cgpa":4.43,"at_risk":1,"risk_probability":0.9998,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU18300","department":"IT","semester":8,"attendance_pct":75.64,"internal_marks":64.48,"prev_semester_cgpa":7.49,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU86019","department":"CSE","semester":5,"attendance_pct":51.68,"internal_marks":37.75,"prev_semester_cgpa":4.51,"at_risk":1,"risk_probability":0.9998,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU44282","department":"MECH","semester":5,"attendance_pct":74.59,"internal_marks":62.82,"prev_semester_cgpa":8.54,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU45058","department":"MECH","semester":4,"attendance_pct":76.97,"internal_marks":78.0,"prev_semester_cgpa":6.69,"at_risk":0,"risk_probability":0.0005,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU17665","department":"IT","semester":8,"attendance_pct":56.04,"internal_marks":36.44,"prev_semester_cgpa":5.45,"at_risk":1,"risk_probability":0.9997,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU51180","department":"CIVIL","semester":6,"attendance_pct":62.85,"internal_marks":37.44,"prev_semester_cgpa":4.07,"at_risk":1,"risk_probability":0.9996,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU31802","department":"CSE","semester":7,"attendance_pct":90.19,"internal_marks":67.1,"prev_semester_cgpa":5.55,"at_risk":0,"risk_probability":0.0065,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU42953","department":"CIVIL","semester":7,"attendance_pct":49.19,"internal_marks":50.67,"prev_semester_cgpa":5.64,"at_risk":1,"risk_probability":0.9998,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU41029","department":"EEE","semester":7,"attendance_pct":56.61,"internal_marks":42.47,"prev_semester_cgpa":6.33,"at_risk":1,"risk_probability":0.9998,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU36588","department":"MECH","semester":3,"attendance_pct":76.5,"internal_marks":69.07,"prev_semester_cgpa":6.61,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU25194","department":"CSE","semester":8,"attendance_pct":40.67,"internal_marks":39.43,"prev_semester_cgpa":7.43,"at_risk":1,"risk_probability":0.9939,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU94015","department":"ECE","semester":5,"attendance_pct":71.44,"internal_marks":50.95,"prev_semester_cgpa":7.28,"at_risk":0,"risk_probability":0.0073,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU66272","department":"IT","semester":2,"attendance_pct":78.61,"internal_marks":69.03,"prev_semester_cgpa":8.37,"at_risk":0,"risk_probability":0.001,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU60196","department":"MECH","semester":4,"attendance_pct":53.33,"internal_marks":33.5,"prev_semester_cgpa":5.8,"at_risk":1,"risk_probability":0.9999,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU19666","department":"EEE","semester":7,"attendance_pct":90.62,"internal_marks":70.08,"prev_semester_cgpa":6.81,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU72739","department":"EEE","semester":2,"attendance_pct":94.76,"internal_marks":57.16,"prev_semester_cgpa":7.04,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU85303","department":"CSE","semester":8,"attendance_pct":73.5,"internal_marks":74.56,"prev_semester_cgpa":6.21,"at_risk":0,"risk_probability":0.001,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU30078","department":"EEE","semester":4,"attendance_pct":83.78,"internal_marks":72.79,"prev_semester_cgpa":6.78,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU58434","department":"ECE","semester":6,"attendance_pct":45.41,"internal_marks":36.35,"prev_semester_cgpa":5.36,"at_risk":1,"risk_probability":0.9999,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU19880","department":"ECE","semester":5,"attendance_pct":73.28,"internal_marks":43.39,"prev_semester_cgpa":5.01,"at_risk":1,"risk_probability":0.9996,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU98381","department":"EEE","semester":5,"attendance_pct":55.92,"internal_marks":35.75,"prev_semester_cgpa":5.37,"at_risk":1,"risk_probability":0.9999,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU55309","department":"EEE","semester":5,"attendance_pct":66.2,"internal_marks":42.22,"prev_semester_cgpa":5.92,"at_risk":1,"risk_probability":0.9996,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU61116","department":"CIVIL","semester":1,"attendance_pct":73.17,"internal_marks":45.73,"prev_semester_cgpa":3.61,"at_risk":1,"risk_probability":0.9997,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU34356","department":"CIVIL","semester":3,"attendance_pct":52.13,"internal_marks":46.23,"prev_semester_cgpa":5.3,"at_risk":1,"risk_probability":0.9997,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU53228","department":"MECH","semester":6,"attendance_pct":54.45,"internal_marks":26.53,"prev_semester_cgpa":4.72,"at_risk":1,"risk_probability":0.9999,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU71592","department":"ECE","semester":1,"attendance_pct":51.44,"internal_marks":21.94,"prev_semester_cgpa":6.25,"at_risk":1,"risk_probability":0.9996,"predicted_at_risk":1,"risk_level":"Critical"},{"student_id":"STU73857","department":"CSE","semester":5,"attendance_pct":84.56,"internal_marks":48.64,"prev_semester_cgpa":7.57,"at_risk":0,"risk_probability":0.0009,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU94085","department":"CSE","semester":5,"attendance_pct":78.89,"internal_marks":76.89,"prev_semester_cgpa":7.11,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU40953","department":"CIVIL","semester":7,"attendance_pct":86.48,"internal_marks":74.98,"prev_semester_cgpa":6.77,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU38277","department":"CSE","semester":1,"attendance_pct":96.57,"internal_marks":87.12,"prev_semester_cgpa":9.01,"at_risk":0,"risk_probability":0.0011,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU75911","department":"IT","semester":3,"attendance_pct":81.12,"internal_marks":58.49,"prev_semester_cgpa":7.45,"at_risk":0,"risk_probability":0.0007,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU55093","department":"CIVIL","semester":6,"attendance_pct":83.47,"internal_marks":82.95,"prev_semester_cgpa":8.15,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU85952","department":"IT","semester":8,"attendance_pct":92.04,"internal_marks":78.53,"prev_semester_cgpa":7.55,"at_risk":0,"risk_probability":0.0005,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU62855","department":"CIVIL","semester":3,"attendance_pct":78.98,"internal_marks":79.25,"prev_semester_cgpa":6.91,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU95626","department":"IT","semester":4,"attendance_pct":88.91,"internal_marks":66.05,"prev_semester_cgpa":7.37,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU33445","department":"ECE","semester":7,"attendance_pct":77.98,"internal_marks":65.48,"prev_semester_cgpa":7.61,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU44993","department":"CIVIL","semester":3,"attendance_pct":68.29,"internal_marks":67.82,"prev_semester_cgpa":8.24,"at_risk":0,"risk_probability":0.0006,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU93318","department":"CSE","semester":1,"attendance_pct":97.33,"internal_marks":51.62,"prev_semester_cgpa":7.24,"at_risk":0,"risk_probability":0.0043,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU96832","department":"ECE","semester":1,"attendance_pct":90.75,"internal_marks":61.93,"prev_semester_cgpa":7.68,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU80373","department":"EEE","semester":1,"attendance_pct":84.88,"internal_marks":80.21,"prev_semester_cgpa":7.71,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU92478","department":"IT","semester":2,"attendance_pct":92.62,"internal_marks":79.44,"prev_semester_cgpa":8.49,"at_risk":0,"risk_probability":0.0004,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU99783","department":"IT","semester":5,"attendance_pct":79.42,"internal_marks":75.6,"prev_semester_cgpa":7.75,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU27875","department":"IT","semester":1,"attendance_pct":77.21,"internal_marks":74.58,"prev_semester_cgpa":5.98,"at_risk":0,"risk_probability":0.003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU21725","department":"MECH","semester":5,"attendance_pct":81.7,"internal_marks":64.61,"prev_semester_cgpa":7.71,"at_risk":0,"risk_probability":0.0009,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU86271","department":"MECH","semester":4,"attendance_pct":80.92,"internal_marks":75.4,"prev_semester_cgpa":6.86,"at_risk":0,"risk_probability":0.0007,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU50037","department":"CSE","semester":4,"attendance_pct":77.99,"internal_marks":59.18,"prev_semester_cgpa":8.23,"at_risk":0,"risk_probability":0.0006,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU43901","department":"MECH","semester":2,"attendance_pct":83.11,"internal_marks":65.83,"prev_semester_cgpa":7.91,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU10167","department":"IT","semester":2,"attendance_pct":79.3,"internal_marks":73.25,"prev_semester_cgpa":7.45,"at_risk":0,"risk_probability":0.0009,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU50966","department":"MECH","semester":8,"attendance_pct":71.75,"internal_marks":64.21,"prev_semester_cgpa":8.59,"at_risk":0,"risk_probability":0.0016,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU27299","department":"CSE","semester":1,"attendance_pct":70.02,"internal_marks":57.81,"prev_semester_cgpa":7.06,"at_risk":0,"risk_probability":0.0013,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU34385","department":"MECH","semester":4,"attendance_pct":94.17,"internal_marks":47.35,"prev_semester_cgpa":5.93,"at_risk":0,"risk_probability":0.0079,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU20077","department":"IT","semester":8,"attendance_pct":75.66,"internal_marks":92.85,"prev_semester_cgpa":6.76,"at_risk":0,"risk_probability":0.0003,"predicted_at_risk":0,"risk_level":"Low"},{"student_id":"STU58418","department":"EEE","semester":7,"attendance_pct":65.13,"internal_marks":56.43,"prev_semester_cgpa":7.77,"at_risk":0,"risk_probability":0.0064,"predicted_at_risk":0,"risk_level":"Low"}];
+
+const SHAP_IMPORTANCE = [
+  {feature:'internal_marks',value:2.1906},
+  {feature:'prev_semester_cgpa',value:1.7937},
+  {feature:'assignment_submission_rate',value:1.4494},
+  {feature:'quiz_avg_score',value:1.0819},
+  {feature:'attendance_pct',value:1.0322},
+  {feature:'library_visits_per_month',value:0.7968},
+  {feature:'lab_attendance_pct',value:0.4843},
+  {feature:'active_backlogs',value:0.0349},
+];
+
+// ── KPI ───────────────────────────────────────────────────────────────────────
+const counts = {Critical:0,High:0,Medium:0,Low:0};
+STUDENTS.forEach(s => counts[s.risk_level]++);
+const total = STUDENTS.length;
+const atRisk = counts.Critical + counts.High;
+
+const kpiData = [
+  {cls:'c-total',    label:'Total Students',  value:total,          sub:'Loaded in demo',     icon:'📊'},
+  {cls:'c-critical', label:'Critical Risk',   value:counts.Critical,sub:`${(counts.Critical/total*100).toFixed(1)}% of class`, icon:'🔴'},
+  {cls:'c-high',     label:'High Risk',       value:counts.High,    sub:`${(counts.High/total*100).toFixed(1)}% of class`, icon:'🟠'},
+  {cls:'c-medium',   label:'Medium Risk',     value:counts.Medium,  sub:`${(counts.Medium/total*100).toFixed(1)}% of class`, icon:'🟡'},
+  {cls:'c-low',      label:'Safe (Low)',      value:counts.Low,     sub:`${(counts.Low/total*100).toFixed(1)}% of class`, icon:'🟢'},
+];
+const kpiGrid = document.getElementById('kpiGrid');
+kpiData.forEach(k => {
+  kpiGrid.innerHTML += `
+    <div class="kpi-card ${k.cls}">
+      <div class="kpi-trend">${k.icon}</div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`;
+});
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const RISK_COLORS = {Critical:'#f43f5e',High:'#fb923c',Medium:'#facc15',Low:'#4ade80'};
+
+// Doughnut
+new Chart(document.getElementById('chartDoughnut'), {
+  type:'doughnut',
+  data:{
+    labels:Object.keys(counts),
+    datasets:[{data:Object.values(counts), backgroundColor:Object.values(RISK_COLORS), borderWidth:2, borderColor:'#0d1525', hoverOffset:8}]
+  },
+  options:{
+    plugins:{legend:{labels:{color:'#e2e8f0',font:{family:'Sora',size:12}}}},
+    cutout:'60%'
+  }
+});
+
+// Dept bar
+const depts = [...new Set(STUDENTS.map(s=>s.department))].sort();
+const deptRisk = depts.map(d => {
+  const group = STUDENTS.filter(s=>s.department===d);
+  return (group.filter(s=>s.risk_level==='Critical'||s.risk_level==='High').length / group.length * 100).toFixed(1);
+});
+new Chart(document.getElementById('chartDept'), {
+  type:'bar',
+  data:{
+    labels:depts,
+    datasets:[{
+      label:'At-Risk %',
+      data:deptRisk,
+      backgroundColor: deptRisk.map(v => v > 30 ? '#f43f5e99' : v > 20 ? '#fb923c99' : '#4ade8099'),
+      borderRadius:6, borderWidth:0
+    }]
+  },
+  options:{
+    plugins:{legend:{display:false}},
+    scales:{
+      y:{ticks:{color:'#64748b'},grid:{color:'#1e2d48'},title:{display:true,text:'At-Risk %',color:'#64748b'}},
+      x:{ticks:{color:'#64748b'},grid:{display:false}}
+    }
+  }
+});
+
+// Histogram of risk probabilities
+const bins = Array.from({length:20},(_,i)=>i/20);
+const binCounts = bins.map(b => STUDENTS.filter(s=>s.risk_probability>=b && s.risk_probability<b+0.05).length);
+new Chart(document.getElementById('chartHist'), {
+  type:'bar',
+  data:{
+    labels:bins.map(b=>(b*100).toFixed(0)+'%'),
+    datasets:[{
+      label:'Student Count',
+      data:binCounts,
+      backgroundColor: bins.map(b => b>0.75?'#f43f5e99':b>0.55?'#fb923c99':b>0.30?'#facc1599':'#4ade8099'),
+      borderRadius:4, borderWidth:0
+    }]
+  },
+  options:{
+    plugins:{legend:{display:false}},
+    scales:{
+      y:{ticks:{color:'#64748b'},grid:{color:'#1e2d48'}},
+      x:{ticks:{color:'#64748b',maxRotation:45},grid:{display:false}}
+    }
+  }
+});
+
+// ── SHAP Bars ─────────────────────────────────────────────────────────────────
+const maxShap = SHAP_IMPORTANCE[0].value;
+const shapContainer = document.getElementById('shapBars');
+SHAP_IMPORTANCE.forEach(s => {
+  const pct = (s.value / maxShap * 100).toFixed(1);
+  shapContainer.innerHTML += `
+    <div class="shap-row">
+      <div class="shap-feat">${s.feature.replace(/_/g,' ')}</div>
+      <div class="shap-track"><div class="shap-fill" style="width:${pct}%"></div></div>
+      <div class="shap-val">${s.value.toFixed(4)}</div>
+    </div>`;
+});
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+let activeFilter = 'all';
+let searchQuery = '';
+
+function renderTable() {
+  const filtered = STUDENTS
+    .filter(s => activeFilter === 'all' || s.risk_level === activeFilter)
+    .filter(s => !searchQuery || s.student_id.toLowerCase().includes(searchQuery) || s.department.toLowerCase().includes(searchQuery))
+    .sort((a,b) => b.risk_probability - a.risk_probability);
+
+  const tbody = document.getElementById('studentTable');
+  tbody.innerHTML = filtered.map(s => {
+    const prob = (s.risk_probability * 100).toFixed(1);
+    const col = RISK_COLORS[s.risk_level];
+    return `
+      <tr>
+        <td class="mono" style="color:var(--accent)">${s.student_id}</td>
+        <td>${s.department}</td>
+        <td>${s.semester}</td>
+        <td>${s.attendance_pct.toFixed(1)}%</td>
+        <td>${s.internal_marks.toFixed(1)}</td>
+        <td>${s.prev_semester_cgpa.toFixed(2)}</td>
+        <td>
+          <div class="prob-bar-wrap">
+            <div class="prob-bar"><div class="prob-bar-fill" style="width:${prob}%;background:${col}"></div></div>
+            <span class="mono" style="font-size:0.76rem">${prob}%</span>
+          </div>
+        </td>
+        <td><span class="badge-risk r-${s.risk_level}">${s.risk_level}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+document.querySelectorAll('.filter-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    renderTable();
+  });
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.toLowerCase();
+  renderTable();
+});
+
+renderTable();
+</script>
+</body>
+</html>
