@@ -3,42 +3,30 @@ version: "3.9"
 services:
   api:
     build: .
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
-      - ./data:/app/data
+      - eduguard_data:/app/data
+      - eduguard_ml:/app/ml
     environment:
+      - DATABASE_URL=sqlite:///./data/eduguard.db
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@eduguard.edu}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@123}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      - FACULTY_EMAIL=${FACULTY_EMAIL:-faculty@college.edu}
+      - FROM_EMAIL=${FROM_EMAIL:-alerts@eduguard.edu}
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
       - TWILIO_PHONE_FROM=${TWILIO_PHONE_FROM:-}
-      - FACULTY_PHONE=${FACULTY_PHONE:-}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
-  dashboard:
-    build: .
-    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-    depends_on:
-      - api
-
-  # Uncomment to add model retraining scheduler
-  # trainer:
-  #   build: .
-  #   command: python models/train.py
-  #   volumes:
-  #     - ./models:/app/models
-  #     - ./data:/app/data
-  #   profiles: ["train"]
+volumes:
+  eduguard_data:
+  eduguard_ml:

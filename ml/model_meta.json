@@ -1,0 +1,68 @@
+{
+  "model_version": "v20260423_050724",
+  "f1_score": 1.0,
+  "auc_roc": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "avg_precision": 1.0,
+  "threshold": 0.24999999999999992,
+  "n_samples": 199,
+  "n_at_risk": 36,
+  "confusion_matrix": [
+    [
+      163,
+      0
+    ],
+    [
+      0,
+      36
+    ]
+  ],
+  "feature_importance": [
+    {
+      "feature": "internal_marks",
+      "importance": 2.2074
+    },
+    {
+      "feature": "prev_semester_cgpa",
+      "importance": 1.81133
+    },
+    {
+      "feature": "quiz_avg_score",
+      "importance": 0.99996
+    },
+    {
+      "feature": "attendance_pct",
+      "importance": 0.55775
+    },
+    {
+      "feature": "assignment_submission_rate",
+      "importance": 0.50981
+    },
+    {
+      "feature": "library_visits_per_month",
+      "importance": 0.31707
+    },
+    {
+      "feature": "lab_attendance_pct",
+      "importance": 0.16952
+    },
+    {
+      "feature": "active_backlogs",
+      "importance": 0.0336
+    },
+    {
+      "feature": "extracurricular_participation",
+      "importance": 0.00079
+    },
+    {
+      "feature": "dept_enc",
+      "importance": 0.0
+    },
+    {
+      "feature": "semester",
+      "importance": 0.0
+    }
+  ],
+  "trained_at": "2026-04-23T05:07:24.562534+00:00"
+}
