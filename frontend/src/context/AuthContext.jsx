@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import api from '../utils/api'
+import api, { authAPI } from '../utils/api'
 
 const AuthContext = createContext(null)
 
@@ -8,56 +8,61 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('eg_token'))
   const [loading, setLoading] = useState(true)
 
-  const loadMe = useCallback(async (t) => {
-    try {
-      api.defaults.headers.common['Authorization'] = `Bearer ${t}`
-      const { data } = await api.get('/api/auth/me')
-      setUser(data)
-    } catch {
-      setToken(null)
-      setUser(null)
-      localStorage.removeItem('eg_token')
-      delete api.defaults.headers.common['Authorization']
-    }
+  const _setAuth = useCallback((tok, u) => {
+    api.defaults.headers.common['Authorization'] = `Bearer ${tok}`
+    setToken(tok); setUser(u)
   }, [])
 
   useEffect(() => {
-    if (token) {
-      loadMe(token).finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
-  }, [token, loadMe])
+    if (!token) { setLoading(false); return }
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    authAPI.me().then(r => setUser(r.data))
+      .catch(() => { localStorage.removeItem('eg_token'); setToken(null) })
+      .finally(() => setLoading(false))
+  }, [])
 
   const login = useCallback(async (email, password) => {
-    const { data } = await api.post('/api/auth/login', { email, password })
-    const { access_token, user: u } = data
-    localStorage.setItem('eg_token', access_token)
-    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
-    setToken(access_token)
-    setUser(u)
-    return u
-  }, [])
+    const { data } = await authAPI.login(email, password)
+    localStorage.setItem('eg_token', data.access_token)
+    _setAuth(data.access_token, data.user)
+    return data.user
+  }, [_setAuth])
+
+  const studentLogin = useCallback(async (full_name, usn) => {
+    const { data } = await authAPI.studentLogin(full_name, usn)
+    localStorage.setItem('eg_token', data.access_token)
+    _setAuth(data.access_token, data.user)
+    return data.user
+  }, [_setAuth])
+
+  const parentLogin = useCallback(async (full_name, usn) => {
+    const { data } = await authAPI.parentLogin(full_name, usn)
+    localStorage.setItem('eg_token', data.access_token)
+    _setAuth(data.access_token, data.user)
+    return data.user
+  }, [_setAuth])
 
   const logout = useCallback(async () => {
-    try { await api.post('/api/auth/logout') } catch {}
+    try { await authAPI.logout() } catch {}
     localStorage.removeItem('eg_token')
     delete api.defaults.headers.common['Authorization']
-    setToken(null)
-    setUser(null)
+    setToken(null); setUser(null)
   }, [])
 
-  const isAdmin = user?.role === 'super_admin'
-  const isHOD   = user?.role === 'hod'
+  const isAdmin   = user?.role === 'super_admin'
+  const isHOD     = user?.role === 'hod'
   const isFaculty = user?.role === 'faculty'
-  const canViewAll = isAdmin
+  const isStudent = user?.role === 'student'
+  const isParent  = user?.role === 'parent'
+  const isStaff   = ['super_admin','hod','faculty'].includes(user?.role)
+  const canViewAll  = isAdmin
   const canViewDept = isAdmin || isHOD
 
   return (
     <AuthContext.Provider value={{
       user, token, loading,
-      login, logout,
-      isAdmin, isHOD, isFaculty,
+      login, studentLogin, parentLogin, logout,
+      isAdmin, isHOD, isFaculty, isStudent, isParent, isStaff,
       canViewAll, canViewDept,
     }}>
       {children}

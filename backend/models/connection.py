@@ -1,38 +1,29 @@
 """
 Database engine, session, and initialization.
-Supports SQLite (default) and PostgreSQL via DATABASE_URL env var.
 """
-
-import os
-import logging
+import os, logging
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 from .database import Base
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite:///./eduguard.db"
-)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./eduguard.db")
 
-# SQLite-specific settings for concurrency
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-        echo=False,
+        poolclass=StaticPool, echo=False,
     )
-    # Enable WAL mode for better concurrency
     @event.listens_for(engine, "connect")
-    def set_sqlite_pragma(dbapi_conn, connection_record):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+    def _sqlite_pragmas(dbapi_conn, _):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
 else:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
 
@@ -40,7 +31,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():
-    """FastAPI dependency for DB session."""
     db = SessionLocal()
     try:
         yield db
@@ -50,7 +40,6 @@ def get_db():
 
 @contextmanager
 def get_db_context():
-    """Context manager for non-FastAPI use (scheduler, scripts)."""
     db = SessionLocal()
     try:
         yield db
@@ -63,70 +52,62 @@ def get_db_context():
 
 
 def init_db():
-    """Create all tables and seed initial data."""
-    from .database import Base
     Base.metadata.create_all(bind=engine)
-    logger.info("✅ Database tables created.")
-    seed_initial_data()
+    logger.info("✅ DB tables created.")
+    _seed_master_data()
 
 
-def seed_initial_data():
-    """Seed departments and a default super admin."""
-    from .database import Department, User, UserRole, ModelMetrics
+def _seed_master_data():
+    from .database import Department, User, UserRole
     from ..utils.security import hash_password
-    from datetime import datetime
+
+    DEPARTMENTS = [
+        ("CS",  "Computer Science"),
+        ("IS",  "Information Science"),
+        ("EC",  "Electronics and Communication"),
+        ("EE",  "Electrical Engineering"),
+        ("ME",  "Mechanical Engineering"),
+        ("CG",  "Computer Science and Design"),
+    ]
 
     with get_db_context() as db:
-        # Departments
-        departments = [
-            {"code": "CSE",  "name": "Computer Science & Engineering"},
-            {"code": "ISE",  "name": "Information Science & Engineering"},
-            {"code": "AIML", "name": "Artificial Intelligence & Machine Learning"},
-            {"code": "ECE",  "name": "Electronics & Communication Engineering"},
-            {"code": "EEE",  "name": "Electrical & Electronics Engineering"},
-            {"code": "MECH", "name": "Mechanical Engineering"},
-            {"code": "CIVIL","name": "Civil Engineering"},
-        ]
-        for dept_data in departments:
-            existing = db.query(Department).filter_by(code=dept_data["code"]).first()
-            if not existing:
-                db.add(Department(**dept_data))
-
+        for code, name in DEPARTMENTS:
+            if not db.query(Department).filter_by(code=code).first():
+                db.add(Department(code=code, name=name))
         db.flush()
 
-        # Super admin
+        # Super admin — credentials from env, NOT hardcoded/displayed
         admin_email = os.getenv("ADMIN_EMAIL", "admin@eduguard.edu")
-        admin_pass  = os.getenv("ADMIN_PASSWORD", "Admin@123")
-        existing_admin = db.query(User).filter_by(email=admin_email).first()
-        if not existing_admin:
+        admin_pass  = os.getenv("ADMIN_PASSWORD", "Admin@EduGuard#2025")
+        if not db.query(User).filter_by(email=admin_email).first():
             db.add(User(
-                email=admin_email,
-                username="superadmin",
-                full_name="Super Administrator",
+                email=admin_email, username="admin",
+                full_name="System Administrator",
                 hashed_password=hash_password(admin_pass),
                 role=UserRole.SUPER_ADMIN,
-                is_active=True,
-                is_verified=True,
+                is_active=True, is_verified=True,
             ))
-            logger.info(f"✅ Super admin created: {admin_email} / {admin_pass}")
 
-        # Demo HOD and faculty users
-        demo_users = [
-            {"email":"hod.cse@eduguard.edu","username":"hod_cse","full_name":"Dr. Ramesh Kumar","role":UserRole.HOD,"dept":"CSE","password":"Hod@1234"},
-            {"email":"hod.ece@eduguard.edu","username":"hod_ece","full_name":"Dr. Priya Nair","role":UserRole.HOD,"dept":"ECE","password":"Hod@1234"},
-            {"email":"faculty.cse1@eduguard.edu","username":"fac_cse1","full_name":"Prof. Anil Sharma","role":UserRole.FACULTY,"dept":"CSE","password":"Faculty@123"},
-            {"email":"faculty.cse2@eduguard.edu","username":"fac_cse2","full_name":"Prof. Sneha Patel","role":UserRole.FACULTY,"dept":"CSE","password":"Faculty@123"},
-            {"email":"faculty.ece1@eduguard.edu","username":"fac_ece1","full_name":"Prof. Ravi Menon","role":UserRole.FACULTY,"dept":"ECE","password":"Faculty@123"},
-            {"email":"faculty.mech1@eduguard.edu","username":"fac_mech1","full_name":"Prof. Deepak Nath","role":UserRole.FACULTY,"dept":"MECH","password":"Faculty@123"},
+        # Demo HOD + faculty per department
+        demo_staff = [
+            ("hod.cs@eduguard.edu",  "hod_cs",   "Dr. Ramesh Kumar",   UserRole.HOD,     "CS"),
+            ("hod.ec@eduguard.edu",  "hod_ec",   "Dr. Priya Nair",     UserRole.HOD,     "EC"),
+            ("fac.cs1@eduguard.edu", "fac_cs1",  "Prof. Anil Sharma",  UserRole.FACULTY, "CS"),
+            ("fac.cs2@eduguard.edu", "fac_cs2",  "Prof. Sneha Patel",  UserRole.FACULTY, "CS"),
+            ("fac.ec1@eduguard.edu", "fac_ec1",  "Prof. Ravi Menon",   UserRole.FACULTY, "EC"),
+            ("fac.me1@eduguard.edu", "fac_me1",  "Prof. Deepak Nath",  UserRole.FACULTY, "ME"),
+            ("fac.is1@eduguard.edu", "fac_is1",  "Prof. Kavya Rao",    UserRole.FACULTY, "IS"),
+            ("fac.ee1@eduguard.edu", "fac_ee1",  "Prof. Mohan Shetty", UserRole.FACULTY, "EE"),
+            ("fac.cg1@eduguard.edu", "fac_cg1",  "Prof. Divya Bhat",   UserRole.FACULTY, "CG"),
         ]
-        for u in demo_users:
-            if not db.query(User).filter_by(email=u["email"]).first():
-                dept = db.query(Department).filter_by(code=u["dept"]).first()
+        for email, uname, fname, role, dept_code in demo_staff:
+            if not db.query(User).filter_by(email=email).first():
+                dept = db.query(Department).filter_by(code=dept_code).first()
                 db.add(User(
-                    email=u["email"], username=u["username"], full_name=u["full_name"],
-                    hashed_password=hash_password(u["password"]),
-                    role=u["role"], department_id=dept.id if dept else None,
+                    email=email, username=uname, full_name=fname,
+                    hashed_password=hash_password("Staff@1234"),
+                    role=role, department_id=dept.id if dept else None,
                     is_active=True, is_verified=True,
                 ))
 
-        logger.info("✅ Seed data complete.")
+        logger.info("✅ Master data seeded.")

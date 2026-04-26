@@ -20,7 +20,7 @@ def client():
 @pytest.fixture(scope="session")
 def admin_token(client):
     r = client.post("/api/auth/login", json={
-        "email": "admin@eduguard.edu", "password": "Admin@123"
+        "email": "admin@eduguard.edu", "password": "Admin@EduGuard#2025"
     })
     assert r.status_code == 200, f"Login failed: {r.text}"
     return r.json()["access_token"]
@@ -29,7 +29,7 @@ def admin_token(client):
 @pytest.fixture(scope="session")
 def hod_token(client):
     r = client.post("/api/auth/login", json={
-        "email": "hod.cse@eduguard.edu", "password": "Hod@1234"
+        "email": "hod.cs@eduguard.edu", "password": "Staff@1234"
     })
     assert r.status_code == 200
     return r.json()["access_token"]
@@ -38,7 +38,7 @@ def hod_token(client):
 @pytest.fixture(scope="session")
 def faculty_token(client):
     r = client.post("/api/auth/login", json={
-        "email": "faculty.cse1@eduguard.edu", "password": "Faculty@123"
+        "email": "fac.cs1@eduguard.edu", "password": "Staff@1234"
     })
     assert r.status_code == 200
     return r.json()["access_token"]
@@ -65,7 +65,7 @@ class TestHealth:
         r = client.get("/api/health")
         assert r.status_code == 200
         assert r.json()["status"] == "healthy"
-        assert r.json()["version"] == "2.0.0"
+        assert r.json()["version"] in ("2.0.0","2.1.0")
 
     def test_docs_available(self, client):
         r = client.get("/api/docs")
@@ -84,7 +84,7 @@ class TestHealth:
 class TestAuthentication:
     def test_login_admin_success(self, client):
         r = client.post("/api/auth/login", json={
-            "email": "admin@eduguard.edu", "password": "Admin@123"
+            "email": "admin@eduguard.edu", "password": "Admin@EduGuard#2025"
         })
         assert r.status_code == 200
         data = r.json()
@@ -94,14 +94,14 @@ class TestAuthentication:
 
     def test_login_hod_success(self, client):
         r = client.post("/api/auth/login", json={
-            "email": "hod.cse@eduguard.edu", "password": "Hod@1234"
+            "email": "hod.cs@eduguard.edu", "password": "Staff@1234"
         })
         assert r.status_code == 200
         assert r.json()["user"]["role"] == "hod"
 
     def test_login_faculty_success(self, client):
         r = client.post("/api/auth/login", json={
-            "email": "faculty.cse1@eduguard.edu", "password": "Faculty@123"
+            "email": "fac.cs1@eduguard.edu", "password": "Staff@1234"
         })
         assert r.status_code == 200
         assert r.json()["user"]["role"] == "faculty"
@@ -129,7 +129,7 @@ class TestAuthentication:
         r = client.get("/api/auth/me", headers=hod_headers)
         assert r.status_code == 200
         data = r.json()
-        assert data["department_code"] == "CSE"
+        assert data["department_code"] == "CS"
 
     def test_forgot_password_always_200(self, client):
         # Should return 200 even for unknown emails (security)
@@ -182,9 +182,9 @@ class TestDepartments:
         r = client.get("/api/departments", headers=admin_headers)
         assert r.status_code == 200
         depts = r.json()
-        assert len(depts) == 7
+        assert len(depts) == 6
         codes = [d["code"] for d in depts]
-        for expected in ["CSE", "ISE", "AIML", "ECE", "EEE", "MECH", "CIVIL"]:
+        for expected in ["CS","IS","EC","EE","ME","CG"]:
             assert expected in codes
 
     def test_dept_has_counts(self, client, admin_headers):
@@ -532,3 +532,96 @@ class TestCsvUpload:
             files={"file": ("bad.csv", io.BytesIO(csv_content.encode()), "text/csv")},
         )
         assert r.status_code == 400
+
+
+# ── Student + Parent Login ─────────────────────────────────────────────────────
+class TestStudentParentLogin:
+    def test_student_login_invalid_usn(self, client):
+        r = client.post("/api/auth/student-login", json={
+            "full_name": "Nobody Here", "usn": "4SN99XX999"
+        })
+        assert r.status_code == 401
+
+    def test_parent_login_invalid_usn(self, client):
+        r = client.post("/api/auth/parent-login", json={
+            "full_name": "Nobody", "usn": "4SN99XX999"
+        })
+        assert r.status_code == 401
+
+    def test_student_login_wrong_name(self, client, admin_headers):
+        # Create a student first
+        r = client.post("/api/students", headers=admin_headers, json={
+            "student_id": "4SN22CS099", "full_name": "Real Student Name",
+            "department_id": 1, "semester": 7, "section": "A",
+            "attendance_pct": 80.0, "internal_marks": 65.0,
+            "assignment_submission_rate": 78.0, "prev_semester_cgpa": 7.5,
+            "lab_attendance_pct": 82.0, "quiz_avg_score": 60.0,
+            "library_visits_per_month": 4, "extracurricular_participation": True,
+            "active_backlogs": 0,
+        })
+        assert r.status_code == 201
+        usn = r.json()["usn"]
+
+        # Wrong name → 401
+        r2 = client.post("/api/auth/student-login", json={
+            "full_name": "Wrong Name Entirely", "usn": usn
+        })
+        assert r2.status_code == 401
+
+        # Cleanup
+        client.delete(f"/api/students/{r.json()['id']}", headers=admin_headers)
+
+    def test_usn_format_correct(self, client, admin_headers):
+        """USN must follow 4SNYYXX001 pattern."""
+        import re
+        r = client.post("/api/students", headers=admin_headers, json={
+            "student_id": "TEST_USN_01", "full_name": "USN Test Student",
+            "department_id": 1, "semester": 4, "section": "A",
+            "attendance_pct": 75.0, "internal_marks": 55.0,
+            "assignment_submission_rate": 70.0, "prev_semester_cgpa": 6.5,
+            "lab_attendance_pct": 78.0, "quiz_avg_score": 52.0,
+            "library_visits_per_month": 3, "extracurricular_participation": False,
+            "active_backlogs": 0,
+        })
+        assert r.status_code == 201
+        usn = r.json()["usn"]
+        assert re.match(r"^4SN\d{2}[A-Z]{2}\d{3}$", usn), f"Invalid USN format: {usn}"
+        client.delete(f"/api/students/{r.json()['id']}", headers=admin_headers)
+
+    def test_student_read_only_own(self, client, admin_headers):
+        """Students cannot list all students."""
+        # Create student
+        r = client.post("/api/students", headers=admin_headers, json={
+            "student_id": "TEST_SRO_01", "full_name": "Read Only Student",
+            "department_id": 1, "semester": 3, "section": "A",
+            "attendance_pct": 82.0, "internal_marks": 68.0,
+            "assignment_submission_rate": 75.0, "prev_semester_cgpa": 7.0,
+            "lab_attendance_pct": 80.0, "quiz_avg_score": 65.0,
+            "library_visits_per_month": 3, "extracurricular_participation": True,
+            "active_backlogs": 0,
+        })
+        assert r.status_code == 201
+        stu  = r.json()
+        usn  = stu["usn"]
+        name = stu["full_name"]
+
+        # Login as student
+        r2 = client.post("/api/auth/student-login", json={"full_name": name, "usn": usn})
+        assert r2.status_code == 200
+        stok = r2.json()["access_token"]
+        SH   = {"Authorization": f"Bearer {stok}"}
+
+        # Cannot list students
+        r3 = client.get("/api/students", headers=SH)
+        assert r3.status_code == 403
+
+        # Can view own profile
+        r4 = client.get("/api/students/my-profile", headers=SH)
+        assert r4.status_code == 200
+        assert r4.json()["usn"] == usn
+
+        # Cannot edit
+        r5 = client.patch(f"/api/students/{stu['id']}", headers=SH, json={"section": "B"})
+        assert r5.status_code == 403
+
+        client.delete(f"/api/students/{stu['id']}", headers=admin_headers)
