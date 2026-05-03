@@ -10,6 +10,7 @@ import AlertsPage from './pages/Alerts'
 import ModelPage from './pages/Model'
 import { UsersPage, SettingsPage } from './pages/Users'
 import DepartmentsPage from './pages/Departments'
+import DepartmentDetailPage from './pages/DepartmentDetail'
 import StudentPortal from './pages/StudentPortal'
 import RiskAnalysisPage from './pages/RiskAnalysis'
 import { Spinner } from './components/ui/index.jsx'
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/model"      element={<ProtectedRoute><ModelPage /></ProtectedRoute>} />
       <Route path="/users"      element={<ProtectedRoute roles={['super_admin','hod']}><UsersPage /></ProtectedRoute>} />
       <Route path="/departments" element={<ProtectedRoute roles={['super_admin']}><DepartmentsPage /></ProtectedRoute>} />
+      <Route path="/departments/:code" element={<ProtectedRoute><DepartmentDetailPage /></ProtectedRoute>} />
       <Route path="/settings"   element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" />} />
     </Routes>

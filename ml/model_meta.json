@@ -1,68 +1,68 @@
 {
-  "model_version": "v20260425_062231",
-  "f1_score": 0.9976905311778291,
-  "auc_roc": 0.9999952950918398,
-  "precision": 0.9953917050691244,
+  "model_version": "v20260503_105826",
+  "f1_score": 1.0,
+  "auc_roc": 1.0,
+  "precision": 1.0,
   "recall": 1.0,
-  "avg_precision": 0.9999786653012461,
-  "threshold": 0.5599999999999997,
-  "n_samples": 1200,
-  "n_at_risk": 216,
+  "avg_precision": 0.9999999999999998,
+  "threshold": 0.30999999999999994,
+  "n_samples": 201,
+  "n_at_risk": 37,
   "confusion_matrix": [
     [
-      983,
-      1
+      164,
+      0
     ],
     [
       0,
-      216
+      37
     ]
   ],
   "feature_importance": [
     {
       "feature": "internal_marks",
-      "importance": 1.99262
-    },
-    {
-      "feature": "attendance_pct",
-      "importance": 1.49514
+      "importance": 2.16599
     },
     {
       "feature": "prev_semester_cgpa",
-      "importance": 1.4406
-    },
-    {
-      "feature": "assignment_submission_rate",
-      "importance": 1.38984
+      "importance": 1.92944
     },
     {
       "feature": "quiz_avg_score",
-      "importance": 1.14278
+      "importance": 0.88356
+    },
+    {
+      "feature": "assignment_submission_rate",
+      "importance": 0.48022
+    },
+    {
+      "feature": "attendance_pct",
+      "importance": 0.45897
     },
     {
       "feature": "library_visits_per_month",
-      "importance": 0.49397
+      "importance": 0.34199
     },
     {
       "feature": "lab_attendance_pct",
-      "importance": 0.44505
+      "importance": 0.18277
     },
     {
       "feature": "active_backlogs",
-      "importance": 0.30761
+      "importance": 0.04343
     },
     {
-      "feature": "dept_enc",
-      "importance": 9e-05
+      "feature": "semester",
+      "importance": 0.00058
     },
     {
       "feature": "extracurricular_participation",
       "importance": 0.0
     },
     {
-      "feature": "semester",
+      "feature": "dept_enc",
       "importance": 0.0
     }
   ],
-  "trained_at": "2026-04-25T06:22:31.039200+00:00"
+  "trained_at": "2026-05-03T10:58:26.279453+00:00"
 }
